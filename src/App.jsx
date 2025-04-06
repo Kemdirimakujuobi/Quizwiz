@@ -3,6 +3,9 @@ import Header from './components/Header/Header';
 import Footer from './components/Footer/Footer';
 import MainContent from './components/MainContent/MainContent';
 import QuestionBubble from './components/QuestionBubble/QuestionBubble';
+import FinalScreen from './components/FinalScreen/FinalScreen';
+import UploadScreen from './components/UploadScreen/UploadScreen';
+import DifficultyScreen from './components/DifficultyScreen/DifficultyScreen';
 import styled from '@emotion/styled';
 
 const AppContainer = styled.div`
@@ -23,6 +26,10 @@ const STORAGE_KEYS = {
 };
 
 function App() {
+  // App state
+  const [currentScreen, setCurrentScreen] = useState('upload'); // 'upload', 'difficulty', 'quiz', 'final'
+  const [numQuestions, setNumQuestions] = useState(null);
+  
   // Core quiz state
   const [questions, setQuestions] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.QUESTIONS);
@@ -181,30 +188,66 @@ function App() {
 
   const currentQuestion = questions[currentQuestionIndex];
 
+  const isQuizComplete = currentQuestionIndex >= numQuestions - 1 && quizState.answerRevealed;
+  
+  if (isQuizComplete && currentScreen !== 'final') {
+    setCurrentScreen('final');
+  }
+
   return (
     <AppContainer>
-      <Header
-        progress={progress}
-        points={points * 5} // Each correct answer is worth 5 points
-        onExit={handleExit}
-        onCheckAnswer={handleCheckAnswer}
-      />
-      <MainContent
-        question={currentQuestion.question}
-        answers={currentQuestion.answers}
-        selectedAnswer={quizState.answerSelected}
-        answerRevealed={quizState.answerRevealed}
-        onAnswerSelect={handleAnswerSelect}
-      />
-      <Footer 
-        onCheck={handleCheckAnswer}
-        onSkip={handleSkip}
+      {currentScreen === 'upload' ? (
+        <UploadScreen onStart={() => setCurrentScreen('difficulty')} />
+      ) : currentScreen === 'difficulty' ? (
+        <DifficultyScreen 
+          onSelectDifficulty={(num) => {
+            setNumQuestions(num);
+            setCurrentScreen('quiz');
+          }} 
+        />
+      ) : currentScreen !== 'final' ? (
+        <>
+          <Header
+            progress={progress}
+            points={points * 5} // Each correct answer is worth 5 points
+            onExit={handleExit}
+            onCheckAnswer={handleCheckAnswer}
+          />
+          <MainContent
+            question={currentQuestion.question}
+            answers={currentQuestion.answers}
+            selectedAnswer={quizState.answerSelected}
+            answerRevealed={quizState.answerRevealed}
+            onAnswerSelect={handleAnswerSelect}
+          />
+          <Footer 
+            onCheck={handleCheckAnswer}
+            onSkip={handleSkip}
         onNext={handleNext}
         onTimeout={handleTimeout}
         initialTime={90} // 1:30 in seconds
         key={quizState.timerKey} // Forces timer reset
         showNext={quizState.showingNext}
       />
+        </>
+      ) : (
+        <FinalScreen
+          score={points}
+          totalQuestions={numQuestions}
+          onRetry={() => {
+            setCurrentQuestionIndex(0);
+            setPoints(0);
+            setProgress(0);
+            setQuizState({
+              answerSelected: null,
+              answerRevealed: false,
+              showingNext: false,
+              timerKey: 0
+            });
+          }}
+          onRestart={handleExit}
+        />
+      )}
     </AppContainer>
   );
 }
