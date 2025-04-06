@@ -135,9 +135,9 @@ function App() {
   };
 
   const handleNext = () => {
-    // Cycle to the beginning if we're at the end
-    const nextIndex = (currentQuestionIndex + 1) % questions.length;
-    setCurrentQuestionIndex(nextIndex);
+    const nextIndex = currentQuestionIndex + 1;
+    
+    // Reset quiz state
     setQuizState(prev => ({
       ...prev,
       answerSelected: null,
@@ -145,6 +145,13 @@ function App() {
       showingNext: false,
       timerKey: prev.timerKey + 1
     }));
+    
+    // Check if we've reached the number of questions selected
+    if (nextIndex >= numQuestions) {
+      setCurrentScreen('final');
+    } else {
+      setCurrentQuestionIndex(nextIndex);
+    }
   };
 
   const handleSkip = () => {
@@ -186,13 +193,15 @@ function App() {
     }
   };
 
-  const currentQuestion = questions[currentQuestionIndex];
+  // Only access currentQuestion when in quiz screen
+  const currentQuestion = currentScreen === 'quiz' ? questions[currentQuestionIndex] : null;
 
-  const isQuizComplete = currentQuestionIndex >= numQuestions - 1 && quizState.answerRevealed;
-  
-  if (isQuizComplete && currentScreen !== 'final') {
-    setCurrentScreen('final');
-  }
+  // Check for quiz completion in useEffect to avoid render-path state updates
+  useEffect(() => {
+    if (currentQuestionIndex >= numQuestions - 1 && quizState.answerRevealed && currentScreen !== 'final') {
+      setCurrentScreen('final');
+    }
+  }, [currentQuestionIndex, numQuestions, quizState.answerRevealed, currentScreen]);
 
   return (
     <AppContainer>
@@ -205,7 +214,7 @@ function App() {
             setCurrentScreen('quiz');
           }} 
         />
-      ) : currentScreen !== 'final' ? (
+      ) : currentScreen === 'quiz' && currentQuestion ? (
         <>
           <Header
             progress={progress}
@@ -223,12 +232,12 @@ function App() {
           <Footer 
             onCheck={handleCheckAnswer}
             onSkip={handleSkip}
-        onNext={handleNext}
-        onTimeout={handleTimeout}
-        initialTime={90} // 1:30 in seconds
-        key={quizState.timerKey} // Forces timer reset
-        showNext={quizState.showingNext}
-      />
+            onNext={handleNext}
+            onTimeout={handleTimeout}
+            initialTime={90} // 1:30 in seconds
+            key={quizState.timerKey} // Forces timer reset
+            showNext={quizState.showingNext}
+          />
         </>
       ) : (
         <FinalScreen
